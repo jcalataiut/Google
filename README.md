@@ -1,10 +1,10 @@
-# README: Custom Dirichlet Process Mixture Model
+# README: GSoCode
 
 ## Introduction
 This repository contains RMarkdown documents that demonstrates how to create and fit a custom mixture model using the Dirichlet Process. 
 The document provides step-by-step explanations, R code implementations, and visualizations of the posterior distributions.
 
-## Tasks Overview
+## Diferent 
 
 ### Easy Task: Fitting a Dirichlet Process Normal Mixture Model
 - Install and load the `dirichletprocess` package.
