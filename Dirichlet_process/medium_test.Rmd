@@ -1,0 +1,91 @@
+---
+title: "Exploring Alpha Priors in Dirichlet Process"
+author: "Jose Calatayud Mateu"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+In this document, we explore the effects of different prior distributions on the alpha parameter in a Dirichlet Process Gaussian Mixture Model. We begin by generating synthetic data from a lognormal mixture model, fitting a Dirichlet process model, and then analyzing how different alpha priors influence the number of clusters formed.
+
+## Simulating and Fitting a Lognormal Mixture Model
+
+We first generate data from a mixture of two lognormal distributions to simulate a complex dataset that may require flexible clustering. We then fit a Dirichlet Process Gaussian Mixture Model to this data.
+
+```{r}
+set.seed(42)
+
+# Generate synthetic data from a lognormal mixture model
+data1 <- rlnorm(100, meanlog = 1, sdlog = 0.3)  
+data2 <- rlnorm(100, meanlog = 2, sdlog = 0.3)  
+simulated_data <- c(data1, data2)  
+
+# Fit Dirichlet Process Gaussian Mixture Model
+dp_lognormal <- DirichletProcessGaussian(simulated_data)
+dp_lognormal <- Fit(dp_lognormal, 1000)  
+
+# Graphics
+plot(dp_lognormal)
+```
+
+```{r}
+# Define a function from the posterior
+posterior_func <- PosteriorFunction(dp_lognormal)
+
+# Generate new samples by evaluating the function on random inputs
+new_samples <- posterior_func(simulated_data)
+
+# Calculate 5% and 95% quantiles
+quantiles <- quantile(new_samples, probs = c(0.05, 0.95))
+print(quantiles)
+```
+
+We generate two lognormal distributions with different means and standard deviations. Then, the data is fitted using a Dirichlet Process Gaussian Mixture Model, allowing flexible clustering, so we run 1000 iterations to refine the model and sample new data from the posterior. We summarize the 5% and 95% quantiles of the posterior samples to understand the spread of the modeled distribution.
+
+## Exploring the Effect of Alpha Prior
+
+The alpha parameter in a Dirichlet Process controls the tendency of the model to create new clusters. A low alpha encourages fewer clusters, while a high alpha promotes more clusters. Here, we compare models with different priors on alpha.
+
+```{r alpha_effect}
+# Processes
+dp_alpha1 <- DirichletProcessGaussian(simulated_data) #default
+dp_alpha2 <- DirichletProcessGaussian(simulated_data, 
+                                      alphaPriors = c(1,2)) # low alpha
+dp_alpha3 <- DirichletProcessGaussian(simulated_data, 
+                                      alphaPriors = c(6,2)) # high alpha
+
+# Fitting model
+dp_alpha1 <- Fit(dp_alpha1, 1000)
+dp_alpha2 <- Fit(dp_alpha2, 1000)
+dp_alpha3 <- Fit(dp_alpha3, 1000)
+
+# Extract alpha parameter chains
+alpha_chain1 <- dp_alpha1$alphaChain
+alpha_chain2 <- dp_alpha2$alphaChain
+alpha_chain3 <- dp_alpha3$alphaChain
+
+# Plot alpha chains to observe convergence
+iterations <- seq_along(alpha_chain1)
+data_plot <- data.frame(
+  Iteration = rep(iterations, 3),
+  Alpha = c(alpha_chain1, alpha_chain2, alpha_chain3),
+  Prior = rep(c("Alpha = (2,4)", "Alpha = (1,2)", "Alpha = (6,2)"), each = length(iterations))
+)
+
+# Plot using ggplot2
+ggplot(data_plot, aes(x = Iteration, y = Alpha, color = Prior)) +
+  geom_line(linewidth = 0.3) + 
+  labs(title = "Alpha Parameter Chains", x = "Iterations", y = "Alpha Value") +
+  theme_minimal()
+```
+
+Here, we define three different alpha priors to test their effect on clustering. Each model is fitted with 1000 iterations to allow proper convergence. We extract the alpha parameter chains to visualize how the parameter evolves during fitting. The plot compares the different alpha chains, helping assess how quickly each model converges and how stable the estimates are.
+
+## Conclusion
+
+This analysis demonstrates that the choice of prior on the alpha parameter significantly affects the number of clusters formed in a Dirichlet Process Gaussian Mixture Model. Lower alpha values lead to fewer clusters, while higher values promote more clusters. By examining the alpha parameter chains, we also gain insights into the convergence behavior of the model under different priors.

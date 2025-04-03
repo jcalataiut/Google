@@ -1,0 +1,138 @@
+---
+title: "Dirichlet Process Mixture Modeling"
+author: "Jose Calatayud Mateh"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(123)
+```
+
+## Installing and Loading the Package
+
+This step ensures that the required package `dirichletprocess` is installed and loaded. Additionally, we load `ggplot2` and `dplyr` for visualization and data manipulation.
+
+```{r install_package, message=FALSE, warning=FALSE}
+# Install the package if not already installed
+if (!requireNamespace("dirichletprocess", quietly = TRUE)) {
+  install.packages("dirichletprocess")
+}
+
+# Load necessary libraries
+library(dirichletprocess)
+library(ggplot2)
+library(tidyverse)
+library(palmerpenguins)
+```
+
+## Normal Mixture Model for Faithful Dataset
+
+This step applies a Dirichlet Process Gaussian Mixture Model to the `faithful` dataset, which contains eruption waiting times for the Old Faithful geyser, using the function `DirichletProcessGaussian` to create the model. So, firts of all we can start giving the defination of this process:
+
+A Dirichlet Process Gaussian Mixture Model (DPGMM) is a powerful statistical tool used for clustering and density estimation. Here's a breakdown of what there are the core concepts:
+
+_Gaussian Mixture Model (GMM)_:A GMM assumes that data points are generated from a mixture of several Gaussian distributions. Traditional GMMs require you to predefine the number of clusters.
+
+_Dirichlet Process (DP)_: The DP is a stochastic process that acts as a prior distribution over probability distributions.Crucially, it allows for a potentially infinite number of mixture components. This means the number of clusters doesn't need to be fixed beforehand.
+
+_DPGMM Combination_: A DPGMM combines the GMM with the DP. The DP provides a prior that enables the model to automatically infer the number of clusters from the data. This makes it a Bayesian nonparametric method, as the number of parameters grows with the amount of data.
+
+As well as, the key advantages:
+
+_Automatic Cluster Number Inference_: Unlike traditional GMMs, DPGMMs don't require you to specify the number of clusters in advance. The model learns the optimal number of clusters from the data.
+
+_Flexibility_: DPGMMs can handle complex datasets with varying cluster shapes and sizes.
+
+_Bayesian Approach_: The Bayesian framework allows for incorporating prior knowledge and quantifying uncertainty.
+
+In essence, DPGMMs are a flexible and powerful way to perform clustering, especially when you don't know how many clusters are present in your data. They are very useful in applications where data is complex and the number of naturally occuring groups is unknown.
+
+So now, applying this concept to the main objective of this document, the model will estimate the underlying distribution of the waiting times.
+
+```{r}
+# Load faithful dataset
+data("faithful")
+
+ggplot(faithful, aes(x = waiting)) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "blue", alpha = 0.5) +
+  geom_density(color = "red", linewidth = 1) +
+  labs(title = "Waiting time distribution between eruptions \n for the Old Faithful geyser",
+       x = "Waiting time (minuts)",
+       y = "Density") +
+  theme_minimal()
+```
+
+```{r}
+faithful.scale <- scale(faithful) %>% as.data.frame
+
+# Fit a Dirichlet Process Gaussian Mixture Model
+
+dp_faithful <- DirichletProcessGaussian(faithful.scale$waiting)
+dp_faithful <- Fit(dp_faithful, 1000) 
+
+# Plot the resulting distribution
+plot(dp_faithful)
+```
+
+```{r}
+cat("Number of clusters detected:", dp_faithful$clusterLabels %>% unique)
+```
+
+
+## Multivariate Normal Model for Iris Dataset
+
+The `iris` dataset contains measurements of different flower species. We apply a Dirichlet Process Multivariate Normal Mixture Model to identify clusters based on the first four numerical columns (sepal length, sepal width, petal length, petal width).
+
+```{r fit_iris}
+# Load iris dataset
+data("iris")
+
+iris.scale <- iris[, 1:4] %>% scale %>% as.matrix
+
+# Fit a Dirichlet Process Multivariate Normal Mixture Model
+dp_iris <- DirichletProcessMvnormal(iris.scale)
+dp_iris <- Fit(dp_iris, 1000) 
+
+# Extract cluster assignments
+iris$Cluster <- as.factor(dp_iris$clusterLabels)
+
+# Plot clustering results using pairwise scatterplots
+pairs(iris[, 1:4], col = iris$Cluster, pch = 19, main = "Dirichlet Process Clustering of Iris Data")
+```
+
+
+```{r}
+cat("Number of clusters detected:", iris$Cluster %>% as.numeric %>% max)
+```
+
+## Alternative: Using Palmer Penguins Dataset
+
+If we want an alternative dataset, the `palmerpenguins` dataset provides measurements of penguin species. We remove missing values before fitting the model.
+
+```{r}
+data("penguins")
+
+# Remove rows with missing values
+penguins <- na.omit(penguins)
+
+penguins.scale <- penguins[, c("bill_length_mm", "bill_depth_mm", "flipper_length_mm", "body_mass_g")] %>% as.matrix %>% scale
+
+# Fit a Dirichlet Process Multivariate Normal Mixture Model using selected numerical features
+dp_penguins <- DirichletProcessMvnormal(penguins.scale)
+dp_penguins <- Fit(dp_penguins, 1000) 
+
+# Extract cluster assignments
+penguins$Cluster <- as.factor(dp_penguins$clusterLabels)
+
+# Plot clustering results using pairwise scatterplots
+pairs(penguins[, c("bill_length_mm", "bill_depth_mm", "flipper_length_mm", "body_mass_g")], 
+      col = penguins$Cluster, 
+      pch = 19, 
+      main = "Dirichlet Process Clustering of Penguin Data")
+```
+
+```{r}
+cat("Number of clusters detected:", penguins$Cluster %>% as.numeric %>% max)
+```
